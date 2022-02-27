@@ -1,0 +1,49 @@
+service: auction-service
+
+custom:
+  tableName: 'auctions-table-${self:provider.stage}'
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  memorySize: 256
+  stage: ${opt:stage, 'dev'}
+  region: eu-west-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action: 
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource:
+        - { "Fn::GetAtt": ["AuctionsTable", "Arn"] }
+  environment:
+    USER_TABLE: ${self:custom.tableName}
+
+functions:
+  create:
+    handler: src/handlers/createAuction.create
+    events:
+      - http:
+          method: post
+          path: auction    
+
+resources:
+  Resources:
+    AuctionsTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        TableName: ${self:custom.tableName}
+        AttributeDefinitions:
+          - 
+            AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - 
+            AttributeName: id
+            KeyType: HASH  
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+  
