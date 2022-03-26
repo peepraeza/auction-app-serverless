@@ -1,29 +1,41 @@
-const uuid = require("uuid");
-const AWS = require("aws-sdk");
-const UserTable = process.env.USER_TABLE
-
+import { v4 as uuid } from "uuid";
+import AWS from "aws-sdk";
+import createError from 'http-errors';
+import commonMiddleware from "../../lib/commonMiddleware";
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-module.exports.create = (event, context, callback) => {
-  const {title} = JSON.parse(event.body);
-  const timestamp = new Date();
-  const params = {
-    TableName: UserTable,
-    Item: {
-      id: uuid.v1(),
-      title: title,
-      status: "OPEN",
-      createdAt: timestamp.toISOString(),
-    },
-  };
-  dynamoDb.put(params, (err) => {
-    if (err) {
-      console.log(err);
+async function createAuction(event, context) {
+  const { title } = event.body;
+  const now = new Date();
+  const endDate = new Date();
+  endDate.setHours(now.getHours() + 1);
+
+  const auction = {
+    id: uuid(),
+    title,
+    status: "OPEN",
+    createdAt: now.toISOString(),
+    endingAt: endDate.toISOString(),
+    highestBid: {
+      amount: 0
     }
-    const response = {
-      statusCode: 200,
-      body: JSON.stringify(params.Item),
-    };
-    callback(null, response);
-  });
-};
+  };
+  try {
+    await dynamoDb
+      .put({
+        TableName: process.env.AUCTIONS_TABLE_NAME,
+        Item: auction,
+      })
+      .promise();
+  } catch (err) {
+    console.log(err);
+    throw new createError.InternalServerError(err);
+  }
+
+  return {
+    statusCode: 201,
+    body: JSON.stringify(auction),
+  };
+}
+
+export const handler = commonMiddleware(createAuction);
