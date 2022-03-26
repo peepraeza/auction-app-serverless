@@ -10,6 +10,3 @@ deploy serverless to aws
 ```
 serverless deploy
 ```
-
-You are ready to go!
-# auction-app-serverless
